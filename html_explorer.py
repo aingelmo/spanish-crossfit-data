@@ -6,7 +6,9 @@ from parsel import Selector
 
 DATE = "20230903"
 DATA = Path("data")
-WORKING_DIR = DATA / DATE / "raw"
+RAW_DATA_DIR = DATA / DATE / "raw"
+CSV_DATA_DIR = DATA / DATE / "csv"
+
 
 BOX_INFO = "div[class='VkpGBb']"
 BOX_NAME = "span[class='OSrXXb']::text"
@@ -39,8 +41,20 @@ def create_metro_box_data(box_info_list: list[tuple[str, str]], filename: str) -
     metro_box_df.to_csv(DATA / DATE / "csv" / f"{filename}_{datetime.now()}.csv", index=False)
 
 
+def create_consolidated_data(csv_path: Path) -> None:
+    """Scan the folder to find csv files and returns a consolidated dataframe with all together."""
+    df_to_concat = []
+    for csv in csv_path.glob("*.csv"):
+        metro_area = csv.stem.split("_")[0]
+        temp_csv_data = pd.read_csv(csv)
+        temp_csv_data = temp_csv_data.assign(metro_area=metro_area)
+        df_to_concat.append(temp_csv_data)
+    all_csvs_data = pd.concat(df_to_concat)[["metro_area", "box_name", "box_url"]]
+    all_csvs_data.to_csv(DATA / DATE / "urls_consolidated.csv", index=False)
+
+
 if __name__ == "__main__":
-    for html_file in list(WORKING_DIR.glob("*.html")):
+    for html_file in list(RAW_DATA_DIR.glob("*.html")):
         metro_area = html_file.stem.split("_")[0]
 
         main_file_selector = get_content(html_file)
@@ -50,3 +64,5 @@ if __name__ == "__main__":
         box_info_list = [get_box_name_url(box_information) for box_information in boxes_with_content]
 
         create_metro_box_data(box_info_list, metro_area)
+
+    create_consolidated_data(CSV_DATA_DIR)
