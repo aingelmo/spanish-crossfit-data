@@ -37,7 +37,7 @@ def run() -> None:
             sleep(5)
 
             logging.log(logging.INFO, f"Current URL - {DRIVER.current_url}")
-            with open(f"{config.BOX_HTML_DIR}/{metro_area}_{datetime.now()}.html", "w") as file:
+            with open(f"{config.GOOGLE_HTML_DIR}/{metro_area}_{datetime.now()}.html", "w") as file:
                 file.write(DRIVER.page_source)
 
             try:
