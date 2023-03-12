@@ -14,11 +14,12 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 from src import config
 
+DRIVER = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
+
 
 def run() -> None:
     """Run the URL extractor module."""
     logging.log(logging.INFO, "---Starting new process---")
-    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
 
     logging.log(logging.INFO, "Getting URLs to scrape...")
     spanish_metro_areas = get_spanish_metro_list()[-11:]
@@ -28,19 +29,19 @@ def run() -> None:
     for metro_area, search_term in urls_to_scrape.items():
         logging.log(logging.INFO, f"Scrapping {search_term}")
 
-        driver.get(search_term)
+        DRIVER.get(search_term)
         sleep(2)
 
         while True:
-            accept_cookies(driver)
+            accept_cookies()
             sleep(5)
 
-            logging.log(logging.INFO, f"Current URL - {driver.current_url}")
+            logging.log(logging.INFO, f"Current URL - {DRIVER.current_url}")
             with open(f"{config.BOX_HTML_DIR}/{metro_area}_{datetime.now()}.html", "w") as file:
-                file.write(driver.page_source)
+                file.write(DRIVER.page_source)
 
             try:
-                driver.find_element(By.PARTIAL_LINK_TEXT, "Siguiente").click()
+                DRIVER.find_element(By.PARTIAL_LINK_TEXT, "Siguiente").click()
             except NoSuchElementException:
                 logging.log(logging.WARNING, f"Nothing else found on: {search_term}")
                 break
@@ -73,7 +74,7 @@ def url_builder(spanish_metro_areas: list[str], search_terms: list[str]) -> dict
     }
 
 
-def accept_cookies(driver: webdriver.Chrome) -> None:
+def accept_cookies() -> None:
     """Accepts the cookies message if it pops up."""
-    if "consent.google.com" in driver.current_url:
-        driver.find_element(By.CSS_SELECTOR, "button[aria-label='Aceptar todo']").click()
+    if "consent.google.com" in DRIVER.current_url:
+        DRIVER.find_element(By.CSS_SELECTOR, "button[aria-label='Aceptar todo']").click()
