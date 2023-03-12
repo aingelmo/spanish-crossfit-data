@@ -12,19 +12,42 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
-driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
+from src import config
 
-logging.basicConfig(
-    filename="logs.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
-)
+
+def run() -> None:
+    """Run the URL extractor module."""
+    logging.log(logging.INFO, "---Starting new process---")
+    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
+
+    logging.log(logging.INFO, "Getting URLs to scrape...")
+    spanish_metro_areas = get_spanish_metro_list()[-11:]
+    crossfit_search_terms = get_crossfit_search_terms(spanish_metro_areas)
+    urls_to_scrape = url_builder(spanish_metro_areas, crossfit_search_terms)
+
+    for metro_area, search_term in urls_to_scrape.items():
+        logging.log(logging.INFO, f"Scrapping {search_term}")
+
+        driver.get(search_term)
+        sleep(2)
+
+        while True:
+            accept_cookies(driver)
+            sleep(5)
+
+            logging.log(logging.INFO, f"Current URL - {driver.current_url}")
+            with open(f"{config.BOX_HTML_DIR}/{metro_area}_{datetime.now()}.html", "w") as file:
+                file.write(driver.page_source)
+
+            try:
+                driver.find_element(By.PARTIAL_LINK_TEXT, "Siguiente").click()
+            except NoSuchElementException:
+                logging.log(logging.WARNING, f"Nothing else found on: {search_term}")
+                break
 
 
 def get_spanish_metro_list() -> list[str]:
     """Get a list of all spanish metro areas from wikipedia"""
-    logging.log(logging.INFO, "Obtaining metro list from wikipedia.")
-
     r = requests.get("https://es.wikipedia.org/wiki/Anexo:%C3%81reas_metropolitanas_de_Espa%C3%B1a")
     soup = BeautifulSoup(r.text, "html.parser")
     spanish_pop_table = soup.find("table", {"class": "wikitable"})
@@ -50,34 +73,7 @@ def url_builder(spanish_metro_areas: list[str], search_terms: list[str]) -> dict
     }
 
 
-def accept_cookies() -> None:
+def accept_cookies(driver: webdriver.Chrome) -> None:
     """Accepts the cookies message if it pops up."""
     if "consent.google.com" in driver.current_url:
         driver.find_element(By.CSS_SELECTOR, "button[aria-label='Aceptar todo']").click()
-
-
-if __name__ == "__main__":
-    logging.log(logging.INFO, "---Starting new process---")
-    spanish_metro_areas = get_spanish_metro_list()[-11:]
-    crossfit_search_terms = get_crossfit_search_terms(spanish_metro_areas)
-    urls_to_scrape = url_builder(spanish_metro_areas, crossfit_search_terms)
-
-    for metro_area, search_term in urls_to_scrape.items():
-        logging.log(logging.INFO, "Scrapping {}".format(search_term))
-        driver.get(search_term)
-        sleep(2)
-
-        while True:
-            accept_cookies()
-
-            sleep(5)
-
-            logging.log(logging.INFO, "Current URL - {}".format(driver.current_url))
-
-            with open(f"data/{metro_area}_{datetime.now()}.html", "w") as file:
-                file.write(driver.page_source)
-
-            try:
-                driver.find_element(By.PARTIAL_LINK_TEXT, "Siguiente").click()
-            except NoSuchElementException:
-                break
