@@ -60,5 +60,8 @@ def create_consolidated_data(csv_path: Path) -> None:
 
         df_to_concat.append(temp_csv_data)
 
-    all_csvs_data = pd.concat(df_to_concat)[["metro_area", "box_name", "box_url"]]
-    all_csvs_data.to_csv(config.DATE_DIR / "urls_consolidated.csv", index=False)
+    all_csvs_data = pd.concat(df_to_concat, axis=0)[["metro_area", "box_name", "box_url"]]
+    all_csvs_data_cleaned = all_csvs_data.assign(
+        box_name=all_csvs_data["box_name"].str.replace(r"[^\w\s]+", "_").str.replace(r"\s+", "_")
+    )
+    all_csvs_data_cleaned.to_csv(config.DATE_DIR / "urls_consolidated.csv", index=False)
